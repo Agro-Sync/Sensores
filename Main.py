@@ -1,18 +1,26 @@
 from simuladores.ApogeeSP110Simulator import ApogeeSP110Simulator
+from conection.MysqlConection import MySQLConnector
 
 mysql_config = {
     'host': 'localhost',
     'database': 'agrosync',
-    'user': 'seu_usuario',
-    'password': 'sua_senha'
+    'user': 'usuario',
+    'password': 'senha'
 }
+mysql_connector = MySQLConnector(**mysql_config)
 
 sensor = ApogeeSP110Simulator(
-    sensor_id=1,       
-    region_id=1,       
-    mysql_config=mysql_config
+    sample_rate=2,
+    sensor_id=1,
+    region_id=1,
+    mysql_connector=mysql_connector
 )
 
+# Testa a conexão MySQL separadamente
+with mysql_connector.get_connection() as conn:
+    print("Conexão MySQL estabelecida com sucesso!")
+
+# Coleta dados com todas as funcionalidades
 sensor.collect_data(
     duration=30,
     filename='dados_sensor.csv',

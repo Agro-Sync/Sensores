@@ -16,14 +16,14 @@ class ApogeeSP110Simulator:
     - Armazenar no MySQL na tabela FatoValores
     """
     
-    def __init__(self, sample_rate=1, sensor_id=None, region_id=None, mysql_config=None):
+    def __init__(self, sample_rate=1, sensor_id=None, region_id=None, mysql_connector=None):
         self.sample_rate = sample_rate
         self.max_irradiance = 2000  # W/m²
         self.calibration_factor = 1.0
         self.is_running = False
         self.sensor_id = sensor_id
         self.region_id = region_id
-        self.mysql_config = mysql_config
+        self.mysql_connector = mysql_connector
         
     def calibrate(self, calibration_factor=1.0):
         self.calibration_factor = calibration_factor
@@ -57,33 +57,29 @@ class ApogeeSP110Simulator:
         return int(timestamp.strftime("%Y%m%d%H"))
     
     def _save_to_mysql(self, timestamp, value):
-        if not all([self.mysql_config, self.sensor_id is not None, self.region_id is not None]):
+        if not all([self.mysql_connector, self.sensor_id is not None, self.region_id is not None]):
             print("Configuração MySQL incompleta - pulando salvamento no banco")
             return False
             
         time_id = self._get_time_id(timestamp)
         
         try:
-            connection = pymysql.connect(**self.mysql_config)
-            with connection.cursor() as cursor:
-                cursor.execute("SELECT IFNULL(MAX(idValor), 0) + 1 FROM agrosync.FatoValores")
-                next_id = cursor.fetchone()[0]
-                
-                cursor.execute(
-                    "INSERT INTO agrosync.FatoValores (idValor, idSensor, idRegiao, idTempo, Valor) "
-                    "VALUES (%s, %s, %s, %s, %s)",
-                    (next_id, self.sensor_id, self.region_id, time_id, value)
-                )
-                connection.commit()
+            next_id = self.mysql_connector.get_next_id('agrosync.FatoValores', 'idValor')
+            
+            success = self.mysql_connector.execute_query(
+                "INSERT INTO agrosync.FatoValores (idValor, idSensor, idRegiao, idTempo, valor) "
+                "VALUES (%s, %s, %s, %s, %s)",
+                (next_id, self.sensor_id, self.region_id, time_id, value)
+            )
+
+            if success:
                 print(f"Dados salvos no MySQL (ID: {next_id})")
                 return True
+            return False
                 
         except Error as e:
             print(f"Erro ao salvar no MySQL: {e}")
             return False
-        finally:
-            if 'connection' in locals() and connection.open:
-                connection.close()
     
     def _save_to_csv(self, timestamps, irradiance_values, filename):
         try:
@@ -144,23 +140,28 @@ class ApogeeSP110Simulator:
 
 
 if __name__ == "__main__":
+    from conection.MysqlConection import MySQLConnector
+
     mysql_config = {
         'host': 'localhost',
+        'database': 'agrosync',
         'user': 'seu_usuario',
-        'password': 'sua_senha',
-        'database': 'agrosync'
+        'password': 'sua_senha'
     }
+    mysql_connector = MySQLConnector(**mysql_config)
     
-    # Cria o sensor
     sensor = ApogeeSP110Simulator(
         sample_rate=2,
-        sensor_id=1,       # ID do sensor em DimSensores
-        region_id=1,       # ID da região em DimRegiao
-        mysql_config=mysql_config
+        sensor_id=1,
+        region_id=1,
+        mysql_connector=mysql_connector
     )
     
-    sensor.calibrate(1.05)
+    # Testa a conexão MySQL separadamente
+    with mysql_connector.get_connection() as conn:
+        print("Conexão MySQL estabelecida com sucesso!")
     
+    # Coleta dados com todas as funcionalidades
     sensor.collect_data(
         duration=30,
         filename='dados_sensor.csv',
