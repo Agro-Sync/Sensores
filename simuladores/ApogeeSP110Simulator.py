@@ -55,6 +55,7 @@ class ApogeeSP110Simulator:
     
     def _get_time_id(self, timestamp):
         return int(timestamp.strftime("%Y%m%d%H"))
+        return '20240115'
     
     def _save_to_mysql(self, timestamp, value):
         if not all([self.mysql_config, self.sensor_id is not None, self.region_id is not None]):
@@ -110,8 +111,11 @@ class ApogeeSP110Simulator:
     def collect_data(self, duration, filename=None, plot=False, save_to_db=False):
         self.is_running = True
         start_time = time.time()
-        timestamps = []
-        irradiance_values = []
+        
+        data = {
+            'timestamp': [],
+            'irradiance': []
+        }
         
         print(f"Iniciando coleta por {duration} segundos...")
         
@@ -120,13 +124,10 @@ class ApogeeSP110Simulator:
                 timestamp = datetime.now()
                 irradiance = self.simulate_irradiance()
                 
-                timestamps.append(timestamp)
-                irradiance_values.append(irradiance)
+                data['timestamp'].append(timestamp)
+                data['irradiance'].append(irradiance)
                 
                 print(f"{timestamp.strftime('%H:%M:%S')} - {irradiance} W/m²")
-                
-                if save_to_db:
-                    self._save_to_mysql(timestamp, irradiance)
                 
                 time.sleep(self.sample_rate)
                 
@@ -134,13 +135,21 @@ class ApogeeSP110Simulator:
             print("\nColeta interrompida pelo usuário")
         finally:
             self.is_running = False
-            print(f"Coleta concluída. Total: {len(irradiance_values)} amostras")
+            
+            df = pd.DataFrame(data)
+            print(f"\nColeta concluída. DataFrame gerado com {len(df)} amostras")
+            print(df.head())  
             
             if filename:
-                self._save_to_csv(timestamps, irradiance_values, filename)
+                self._save_to_csv(df, filename)
                 
             if plot:
-                self._plot_data(timestamps, irradiance_values)
+                self._plot_data(df)
+                
+            if save_to_db:
+                self._save_to_mysql(df)
+                
+            return df  
 
 
 if __name__ == "__main__":
