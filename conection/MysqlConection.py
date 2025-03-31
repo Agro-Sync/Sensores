@@ -1,56 +1,59 @@
 import pymysql
 from pymysql import Error
+from contextlib import contextmanager
 
 class MySQLConnector:
+    def __init__(self, host, database, user, password, **kwargs):
+        self.connection_params = {
+            'host': host,
+            'database': database,
+            'user': user,
+            'password': password,
+            'charset': 'utf8mb4',
+            'cursorclass': pymysql.cursors.DictCursor,
+            **kwargs
+        }
     
-    def __init__(self, host, database, user, password):
-        self.host = host
-        self.database = database
-        self.user = user
-        self.password = password
-        self.connection = None
-    
-    def connect(self):
+    @contextmanager
+    def get_connection(self):
+        """
+        Fornece uma conexão gerenciada por contexto
+        Uso:
+        with mysql_connector.get_connection() as conn:
+            # operações com a conexão
+        """
+        conn = None
         try:
-            self.connection = pymysql.connect(
-                host=self.host,
-                user=self.user,
-                password=self.password,
-                database=self.database,
-                charset='utf8mb4',
-                cursorclass=pymysql.cursors.DictCursor
-            )
-            return True
+            conn = pymysql.connect(**self.connection_params)
+            yield conn
         except Error as e:
-            print(f"Erro ao conectar ao MySQL: {e}")
-            return False
-    
-    def disconnect(self):
-        if self.connection and self.connection.open:
-            self.connection.close()
+            print(f"Erro MySQL: {e}")
+            raise
+        finally:
+            if conn:
+                conn.close()
     
     def execute_query(self, query, params=None, fetch=False):
-        if not self.connection or not self.connection.open:
-            if not self.connect():
-                return None
-                
-        try:
-            with self.connection.cursor() as cursor:
+        """
+        Executa uma query de forma segura
+        Retorna:
+        - Para SELECT com fetch=True: lista de resultados
+        - Para outras queries: número de linhas afetadas
+        """
+        with self.get_connection() as conn:
+            with conn.cursor() as cursor:
                 cursor.execute(query, params or ())
                 if fetch:
                     result = cursor.fetchall()
                 else:
                     result = cursor.rowcount
-                self.connection.commit()
+                conn.commit()
                 return result
-        except Error as e:
-            print(f"Erro ao executar query: {e}")
-            self.connection.rollback()
-            return None
     
-    def __enter__(self):
-        self.connect()
-        return self
-    
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        self.disconnect()
+    def get_next_id(self, table, id_column='id'):
+        """
+        Obtém o próximo ID disponível para uma tabela
+        """
+        query = f"SELECT IFNULL(MAX({id_column}), 0) + 1 AS next_id FROM {table}"
+        result = self.execute_query(query, fetch=True)
+        return result[0]['next_id'] if result else 1
