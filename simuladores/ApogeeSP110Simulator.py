@@ -3,7 +3,7 @@ import math
 from datetime import datetime
 import pandas as pd
 from pymysql import Error
-
+import psutil
 
 class ApogeeSP110Simulator:
     """
@@ -48,11 +48,7 @@ class ApogeeSP110Simulator:
         calibrated_value = measured_value * self.calibration_factor
         return min(max(round(calibrated_value, 1), 0), self.max_irradiance)
 
-    @staticmethod
-    def _get_time_id(timestamp):
-        return int(timestamp.strftime("%Y%m%d%H"))
-
-    def _save_to_mysql(self, data_frame):
+    def _save_to_mysql(self, data_frame, num_sample):
         if not all([self.mysql_connector, self.sensor_id is not None, self.region_id is not None]):
             print("Configuração MySQL incompleta - pulando salvamento no banco")
             return False
@@ -61,15 +57,13 @@ class ApogeeSP110Simulator:
             with self.mysql_connector.get_connection() as conn:
                 with conn.cursor() as cursor:
                     for _, row in data_frame.iterrows():
-                        time_id = self._get_time_id(row['timestamp'])
-
-                        cursor.execute("SELECT IFNULL(MAX(idValor), 0) + 1 FROM agrosync.FatoValores")
-                        next_id = cursor.fetchone()[0]
+                        time_init = row['timestamp']
+                        usage = psutil.cpu_percent()
 
                         cursor.execute(
-                            "INSERT INTO agrosync.FatoValores (idValor, idSensor, idRegiao, idTempo, Valor) "
-                            "VALUES (%s, %s, %s, %s, %s)",
-                            (next_id, self.sensor_id, self.region_id, time_id, row['irradiance'])
+                            "INSERT INTO agrosync.log_exec (id_sensor, valor, dt_exec, dt_start_exec, dt_end_exec, qtd_data, process_usage) "
+                            "VALUES (%s, %s, %s, %s, %s, %s, %s)",
+                            (self.sensor_id, row['irradiance'], time_init.strftime('%Y-%m-%d'), time_init, datetime.now(), num_sample, usage)
                         )
 
                     conn.commit()
@@ -98,14 +92,9 @@ class ApogeeSP110Simulator:
             print("\nColeta interrompida pelo usuário")
         finally:
             df = pd.DataFrame(data)
-            # print(f"\nColeta concluída. DataFrame gerado com {len(df)} amostras")
-            # print(df.head())
-
             if save_to_db:
-                self._save_to_mysql(df)
-
+                self._save_to_mysql(df, num_samples)
             return df
-
 
 if __name__ == "__main__":
     from conection.MysqlConection import MySQLConnector

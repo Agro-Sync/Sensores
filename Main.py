@@ -23,7 +23,7 @@ def processar_bloco(tamanho_bloco):
 
     df = sensor.collect_data(
         num_samples=tamanho_bloco,
-        save_to_db=False
+        save_to_db=True
     )
 
     fim_tempo = time.time()
