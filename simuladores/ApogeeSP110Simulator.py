@@ -2,6 +2,7 @@ import random
 import math
 from datetime import datetime
 import pandas as pd
+from psutil import cpu_percent
 from pymysql import Error
 import psutil
 
@@ -56,23 +57,35 @@ class ApogeeSP110Simulator:
         try:
             with self.mysql_connector.get_connection() as conn:
                 with conn.cursor() as cursor:
+                    values = []
+                    cpu_usage = psutil.cpu_percent()
+
                     for _, row in data_frame.iterrows():
                         time_init = row['timestamp']
-                        usage = psutil.cpu_percent()
-
-                        cursor.execute(
-                            "INSERT INTO agrosync.log_exec (id_sensor, valor, dt_exec, dt_start_exec, dt_end_exec, qtd_data, process_usage) "
-                            "VALUES (%s, %s, %s, %s, %s, %s, %s)",
-                            (self.sensor_id, row['irradiance'], time_init.strftime('%Y-%m-%d'), time_init, datetime.now(), num_sample, usage)
-                        )
-
+                        values.append((
+                            self.sensor_id,
+                            row['irradiance'],
+                            time_init.strftime('%Y-%m-%d'),
+                            time_init,
+                            datetime.now(),
+                            num_sample,
+                            cpu_usage,
+                        ))
+                    self._execute_batch_insert(cursor, values)
                     conn.commit()
-                    print(f"Dados salvos no MySQL. Total: {len(data_frame)} registros")
-                    return True
 
         except Error as e:
             print(f"Erro ao salvar no MySQL: {e}")
             return False
+
+    @staticmethod
+    def _execute_batch_insert(cursor, values):
+        query = """
+        INSERT INTO agrosync.log_exec 
+        (id_sensor, valor, dt_exec, dt_start_exec, dt_end_exec, qtd_data, process_usage)
+        VALUES (%s, %s, %s, %s, %s, %s, %s)
+        """
+        cursor.executemany(query, values)
 
     def collect_data(self, num_samples, save_to_db=False):
         data = {

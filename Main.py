@@ -66,7 +66,6 @@ cenarios = [
     range(100, 600, 100),
 ]
 
-
 tamanhos_por_cenario = []
 tempos_por_cenario = []
 memorias_por_cenario = []
