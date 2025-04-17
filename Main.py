@@ -17,7 +17,6 @@ sensor = ApogeeSP110Simulator(
     mysql_connector=MySQLConnector(**mysql_config)
 )
 
-
 def processar_bloco(tamanho_bloco):
     inicio_tempo = time.time()
 
@@ -32,7 +31,6 @@ def processar_bloco(tamanho_bloco):
     uso_memoria = sys.getsizeof(df) / (1024 * 1024)
 
     return tempo_execucao, uso_memoria
-
 
 def plot_graficos(tamanhos, tempos, memorias, cenarios):
     plt.figure(figsize=(14, 6))
@@ -58,7 +56,6 @@ def plot_graficos(tamanhos, tempos, memorias, cenarios):
 
     plt.tight_layout()
     plt.show()
-
 
 cenarios = [
     range(100, 600, 100),
