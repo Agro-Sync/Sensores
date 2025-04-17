@@ -1,6 +1,6 @@
 import matplotlib.pyplot as plt
-from conection.MysqlConection import MySQLConnector
-from simuladores.ApogeeSP110Simulator import ApogeeSP110Simulator
+from connection import MySQLConnector
+from simuladores import ApogeeSP110Simulator
 import time
 import sys
 
@@ -17,13 +17,12 @@ sensor = ApogeeSP110Simulator(
     mysql_connector=MySQLConnector(**mysql_config)
 )
 
-
 def processar_bloco(tamanho_bloco):
     inicio_tempo = time.time()
 
     df = sensor.collect_data(
         num_samples=tamanho_bloco,
-        save_to_db=False
+        save_to_db=True
     )
 
     fim_tempo = time.time()
@@ -32,7 +31,6 @@ def processar_bloco(tamanho_bloco):
     uso_memoria = sys.getsizeof(df) / (1024 * 1024)
 
     return tempo_execucao, uso_memoria
-
 
 def plot_graficos(tamanhos, tempos, memorias, cenarios):
     plt.figure(figsize=(14, 6))
@@ -59,13 +57,11 @@ def plot_graficos(tamanhos, tempos, memorias, cenarios):
     plt.tight_layout()
     plt.show()
 
-
 cenarios = [
     range(100, 600, 100),
     range(1000, 6000, 100),
     range(100, 600, 100),
 ]
-
 
 tamanhos_por_cenario = []
 tempos_por_cenario = []

@@ -1,9 +1,9 @@
-import random
-import math
 from datetime import datetime
-import pandas as pd
 from pymysql import Error
-
+import pandas as pd
+import random
+import psutil
+import math
 
 class ApogeeSP110Simulator:
     """
@@ -48,11 +48,7 @@ class ApogeeSP110Simulator:
         calibrated_value = measured_value * self.calibration_factor
         return min(max(round(calibrated_value, 1), 0), self.max_irradiance)
 
-    @staticmethod
-    def _get_time_id(timestamp):
-        return int(timestamp.strftime("%Y%m%d%H"))
-
-    def _save_to_mysql(self, data_frame):
+    def _save_to_mysql(self, data_frame, num_sample):
         if not all([self.mysql_connector, self.sensor_id is not None, self.region_id is not None]):
             print("Configuração MySQL incompleta - pulando salvamento no banco")
             return False
@@ -60,25 +56,35 @@ class ApogeeSP110Simulator:
         try:
             with self.mysql_connector.get_connection() as conn:
                 with conn.cursor() as cursor:
+                    values = []
+                    cpu_usage = psutil.cpu_percent()
+
                     for _, row in data_frame.iterrows():
-                        time_id = self._get_time_id(row['timestamp'])
-
-                        cursor.execute("SELECT IFNULL(MAX(idValor), 0) + 1 FROM agrosync.FatoValores")
-                        next_id = cursor.fetchone()[0]
-
-                        cursor.execute(
-                            "INSERT INTO agrosync.FatoValores (idValor, idSensor, idRegiao, idTempo, Valor) "
-                            "VALUES (%s, %s, %s, %s, %s)",
-                            (next_id, self.sensor_id, self.region_id, time_id, row['irradiance'])
-                        )
-
+                        time_init = row['timestamp']
+                        values.append((
+                            self.sensor_id,
+                            row['irradiance'],
+                            time_init.strftime('%Y-%m-%d'),
+                            time_init,
+                            datetime.now(),
+                            num_sample,
+                            cpu_usage,
+                        ))
+                    self._execute_batch_insert(cursor, values)
                     conn.commit()
-                    print(f"Dados salvos no MySQL. Total: {len(data_frame)} registros")
-                    return True
 
         except Error as e:
             print(f"Erro ao salvar no MySQL: {e}")
             return False
+
+    @staticmethod
+    def _execute_batch_insert(cursor, values):
+        query = """
+        INSERT INTO agrosync.log_exec 
+        (id_sensor, valor, dt_exec, dt_start_exec, dt_end_exec, qtd_data, process_usage)
+        VALUES (%s, %s, %s, %s, %s, %s, %s)
+        """
+        cursor.executemany(query, values)
 
     def collect_data(self, num_samples, save_to_db=False):
         data = {
@@ -98,17 +104,12 @@ class ApogeeSP110Simulator:
             print("\nColeta interrompida pelo usuário")
         finally:
             df = pd.DataFrame(data)
-            # print(f"\nColeta concluída. DataFrame gerado com {len(df)} amostras")
-            # print(df.head())
-
             if save_to_db:
-                self._save_to_mysql(df)
-
+                self._save_to_mysql(df, num_samples)
             return df
 
-
 if __name__ == "__main__":
-    from conection.MysqlConection import MySQLConnector
+    from connection import MySQLConnector
 
     mysql_config = {
         'host': 'localhost',
