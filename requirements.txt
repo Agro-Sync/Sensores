@@ -1,8 +1,2 @@
-random
-time
-csv
-math
-matplotlib
-datetime 
 pymysql
 pandas
