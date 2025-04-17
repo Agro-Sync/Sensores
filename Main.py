@@ -1,6 +1,6 @@
 import matplotlib.pyplot as plt
-from conection.MysqlConection import MySQLConnector
-from simuladores.ApogeeSP110Simulator import ApogeeSP110Simulator
+from connection import MySQLConnector
+from simuladores import ApogeeSP110Simulator
 import time
 import sys
 
