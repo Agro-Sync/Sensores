@@ -99,7 +99,7 @@ class SoilMoistureSimulator:
 
 
 if __name__ == "__main__":
-    from MysqlConection import
+    from connection import MySQLConnector
 
     mysql_config = {
         'host': 'localhost',

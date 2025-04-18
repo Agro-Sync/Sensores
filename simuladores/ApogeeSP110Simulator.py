@@ -1,10 +1,9 @@
-import random
-import math
 from datetime import datetime
-import pandas as pd
-from psutil import cpu_percent
 from pymysql import Error
+import pandas as pd
+import random
 import psutil
+import math
 
 class ApogeeSP110Simulator:
     """
@@ -110,7 +109,7 @@ class ApogeeSP110Simulator:
             return df
 
 if __name__ == "__main__":
-    from conection.MysqlConection import MySQLConnector
+    from connection import MySQLConnector
 
     mysql_config = {
         'host': 'localhost',

@@ -1,2 +1,5 @@
-pymysql
-pandas
+matplotlib==3.10.1
+pandas==2.2.3
+psutil==7.0.0
+PyMySQL==1.1.1
+setuptools==78.1.0
