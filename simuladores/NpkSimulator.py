@@ -122,7 +122,7 @@ if __name__ == "__main__":
     mysql_connector = MySQLConnector(**mysql_config)
 
     sensor = NPKSensorSimulator(
-        sensor_id=1,
+        sensor_id=3,
         region_id=1,
         mysql_connector=mysql_connector
     )
