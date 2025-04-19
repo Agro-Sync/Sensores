@@ -11,7 +11,7 @@ class NPKSensorSimulator:
     - Simulação realista de concentrações de N, P e K no solo
     - Influência de chuva e temperatura nos níveis de nutrientes
     - Geração de DataFrame com os dados
-    - Armazenamento no MySQL na tabela FatoValores
+    - Armazenamento no MySQL na tabela FatoValores (respeitando estrutura atual)
     """
 
     def __init__(self, sensor_id=None, region_id=None, mysql_connector=None):
@@ -24,17 +24,17 @@ class NPKSensorSimulator:
     def simulate_weather(self):
         temperatura = random.uniform(10, 40)
         chuva = max(0, random.gauss(5, 10))
-        return round(temperatura, 1), round(chuva, 1)
+        self.last_temp = round(temperatura, 1)
+        self.last_rain = round(chuva, 1)
 
     def simulate_npk(self):
-        temperatura, chuva = self.simulate_weather()
+        self.simulate_weather()
+        temperatura = self.last_temp
+        chuva = self.last_rain
 
         nitrogenio = max(0, random.gauss(25, 10) - (chuva * 0.3 + max(0, temperatura - 35)))
         fosforo = max(0, random.gauss(12, 4) - (chuva * 0.1))
         potassio = max(0, random.gauss(120, 30) - (chuva * 0.2))
-
-        self.last_temp = temperatura
-        self.last_rain = chuva
 
         return round(nitrogenio, 1), round(fosforo, 1), round(potassio, 1)
 
@@ -51,19 +51,18 @@ class NPKSensorSimulator:
 
                     for _, row in data_frame.iterrows():
                         time_init = row['timestamp']
-                        values.append((
-                            self.sensor_id,
-                            row['nitrogenio'],
-                            row['fosforo'],
-                            row['potassio'],
-                            row['chuva'],
-                            row['temperatura'],
-                            time_init.strftime('%Y-%m-%d'),
-                            time_init,
-                            datetime.now(),
-                            num_sample,
-                            cpu_usage,
-                        ))
+
+                        
+                        for valor in [row['nitrogenio'], row['fosforo'], row['potassio']]:
+                            values.append((
+                                self.sensor_id,
+                                valor,
+                                time_init.strftime('%Y-%m-%d'),
+                                time_init,
+                                datetime.now(),
+                                num_sample,
+                                cpu_usage,
+                            ))
                     self._execute_batch_insert(cursor, values)
                     conn.commit()
 
@@ -74,9 +73,9 @@ class NPKSensorSimulator:
     @staticmethod
     def _execute_batch_insert(cursor, values):
         query = """
-        INSERT INTO agrosync.log_npk 
-        (id_sensor, nitrogenio, fosforo, potassio, chuva, temperatura, dt_exec, dt_start_exec, dt_end_exec, qtd_data, process_usage)
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        INSERT INTO agrosync.log_exec 
+        (id_sensor, valor, dt_exec, dt_start_exec, dt_end_exec, qtd_data, process_usage)
+        VALUES (%s, %s, %s, %s, %s, %s, %s)
         """
         cursor.executemany(query, values)
 
@@ -85,9 +84,7 @@ class NPKSensorSimulator:
             'timestamp': [],
             'nitrogenio': [],
             'fosforo': [],
-            'potassio': [],
-            'chuva': [],
-            'temperatura': []
+            'potassio': []
         }
 
         try:
@@ -99,8 +96,6 @@ class NPKSensorSimulator:
                 data['nitrogenio'].append(n)
                 data['fosforo'].append(p)
                 data['potassio'].append(k)
-                data['chuva'].append(self.last_rain)
-                data['temperatura'].append(self.last_temp)
 
         except KeyboardInterrupt:
             print("\nColeta interrompida pelo usuário")
@@ -122,7 +117,7 @@ if __name__ == "__main__":
     mysql_connector = MySQLConnector(**mysql_config)
 
     sensor = NPKSensorSimulator(
-        sensor_id=3,
+        sensor_id=1,
         region_id=1,
         mysql_connector=mysql_connector
     )
