@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 from connection import MySQLConnector
 from simuladores import ApogeeSP110Simulator
+from simuladores import NpkSimulator
 import time
 import sys
 
@@ -13,6 +14,11 @@ mysql_config = {
 
 sensor = ApogeeSP110Simulator(
     sensor_id=1,
+    region_id=1,
+    mysql_connector=MySQLConnector(**mysql_config)
+)
+sensor2 = NpkSimulator(
+    sensor_id=3,
     region_id=1,
     mysql_connector=MySQLConnector(**mysql_config)
 )
