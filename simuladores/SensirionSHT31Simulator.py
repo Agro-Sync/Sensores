@@ -105,8 +105,8 @@ if __name__ == "__main__":
     mysql_config = {
         'host': 'localhost',
         'database': 'agrosync',
-        'user': 'root',
-        'password': 'urubu100'
+        'user': 'seu_usuario',
+        'password': 'sua_senha'
     }
     mysql_connector = MySQLConnector(**mysql_config)
 
