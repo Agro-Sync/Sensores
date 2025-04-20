@@ -1,21 +1,20 @@
-import random
-import math
-from datetime import datetime
-import pandas as pd
-from pymysql import Error
-import psutil
 import os
+from datetime import datetime
+from pymysql import Error
+import pandas as pd
+import random
+import psutil
 
-class ApogeeSP110Simulator:
+class SHT31Simulator:
     """
-    Simulador do sensor Apogee SP-110 com capacidade de:
-    - Simulação realista de irradiância solar
+    Simulador do sensor Sensirion SHT31 com capacidade de:
+    - Simulação realista de humidade relativa do ar
     - Geração de DataFrame com os dados
     - Armazenamento no MySQL na tabela FatoValores
     """
 
     def __init__(self, sensor_id=None, region_id=None, mysql_connector=None):
-        self.max_irradiance = 2000
+        self.max_humidity = 100
         self.calibration_factor = 1.0
         self.sensor_id = sensor_id
         self.region_id = region_id
@@ -25,29 +24,21 @@ class ApogeeSP110Simulator:
         self.calibration_factor = calibration_factor
         print(f"Sensor calibrado com fator {calibration_factor:.2f}")
 
-    def simulate_irradiance(self, base_value=None):
+    def simulate_humidity(self, base_value=None):
         if base_value is None:
             now = datetime.now()
             hour = now.hour + now.minute / 60 + now.second / 3600
 
             if 5 <= hour <= 19:
-                solar_angle = math.pi * (hour - 12) / 15
-                max_irradiance = 1000
-                base_value = max_irradiance * math.sin(math.pi / 2 - abs(solar_angle)) ** 1.5
-                base_value = max(0, base_value)
-
-                if hour < 6 or hour > 18:
-                    base_value *= 0.3 * (1 - abs(hour - 12) / 6)
+                base_value = random.uniform(40, 100)
             else:
-                base_value = random.uniform(0, 10)
-        else:
-            base_value = min(max(base_value, 0), self.max_irradiance)
+                base_value = random.uniform(0, 40)
 
         noise = random.gauss(0, base_value * 0.02 + 2)
         max_variation = base_value * 0.05 + 5
         measured_value = base_value + max(-max_variation, min(noise, max_variation))
         calibrated_value = measured_value * self.calibration_factor
-        return min(max(round(calibrated_value, 1), 0), self.max_irradiance)
+        return min(max(round(calibrated_value, 1), 0), self.max_humidity)
 
     def _save_to_mysql(self, data_frame, num_sample):
         if not all([self.mysql_connector, self.sensor_id is not None, self.region_id is not None]):
@@ -68,14 +59,14 @@ class ApogeeSP110Simulator:
                         time_init = row['timestamp']
                         values.append((
                             self.sensor_id,
-                            row['irradiance'],
+                            row['humidity'],
                             time_init.strftime('%Y-%m-%d'),
                             time_init,
                             datetime.now(),
                             num_sample,
                             mem_mb,
                             cpu_usage,
-                            'ApogeeSP110',
+                            'SensirionSHT31',
                         ))
                     self._execute_batch_insert(cursor, values)
                     conn.commit()
@@ -96,16 +87,16 @@ class ApogeeSP110Simulator:
     def collect_data(self, num_samples, save_to_db=False):
         data = {
             'timestamp': [],
-            'irradiance': []
+            'humidity': []
         }
 
         try:
             for _ in range(num_samples):
                 timestamp = datetime.now()
-                irradiance = self.simulate_irradiance()
+                humidity = self.simulate_humidity()
 
                 data['timestamp'].append(timestamp)
-                data['irradiance'].append(irradiance)
+                data['humidity'].append(humidity)
 
         except KeyboardInterrupt:
             print("\nColeta interrompida pelo usuário")
@@ -126,7 +117,7 @@ if __name__ == "__main__":
     }
     mysql_connector = MySQLConnector(**mysql_config)
 
-    sensor = ApogeeSP110Simulator(
+    sensor = SHT31Simulator(
         sensor_id=1,
         region_id=1,
         mysql_connector=mysql_connector
