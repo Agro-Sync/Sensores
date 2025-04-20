@@ -1,11 +1,13 @@
+import os
 import random
 import math
 from datetime import datetime
 import pandas as pd
 from pymysql import Error
+import psutil
 
 
-class SoilMoistureSimulator:
+class DecagonEC5Simulator:
     """
     Simulador do sensor de Umidade do Solo com capacidade de:
     - Simulação realista de umidade do solo
@@ -41,11 +43,7 @@ class SoilMoistureSimulator:
         calibrated_value = measured_value * self.calibration_factor
         return min(max(round(calibrated_value, 1), 0), self.max_moisture)
 
-    @staticmethod
-    def _get_time_id(timestamp):
-        return int(timestamp.strftime("%Y%m%d%H"))
-
-    def _save_to_mysql(self, data_frame):
+    def _save_to_mysql(self, data_frame, num_sample):
         if not all([self.mysql_connector, self.sensor_id is not None, self.region_id is not None]):
             print("Configuração MySQL incompleta - pulando salvamento no banco")
             return False
@@ -53,48 +51,62 @@ class SoilMoistureSimulator:
         try:
             with self.mysql_connector.get_connection() as conn:
                 with conn.cursor() as cursor:
+                    values = []
+                    cpu_usage = psutil.cpu_percent()
+
+                    process = psutil.Process(os.getpid())
+                    mem_bytes = process.memory_info().rss
+                    mem_mb = mem_bytes / (1024 * 1024)
+
                     for _, row in data_frame.iterrows():
-                        time_id = self._get_time_id(row['timestamp'])
-
-                        cursor.execute("SELECT IFNULL(MAX(idValor), 0) + 1 FROM agrosync.FatoValores")
-                        next_id = cursor.fetchone()[0]
-
-                        cursor.execute(
-                            "INSERT INTO agrosync.FatoValores (idValor, idSensor, idRegiao, idTempo, Valor) "
-                            "VALUES (%s, %s, %s, %s, %s)",
-                            (next_id, self.sensor_id, self.region_id, time_id, row['moisture'])
-                        )
-
+                        time_init = row['timestamp']
+                        values.append((
+                            self.sensor_id,
+                            row['umidade'],
+                            time_init.strftime('%Y-%m-%d'),
+                            time_init,
+                            datetime.now(),
+                            num_sample,
+                            mem_mb,
+                            cpu_usage,
+                            'DecagonEC5',
+                        ))
+                    self._execute_batch_insert(cursor, values)
                     conn.commit()
-                    print(f"Dados salvos no MySQL. Total: {len(data_frame)} registros")
-                    return True
 
         except Error as e:
             print(f"Erro ao salvar no MySQL: {e}")
             return False
 
+    @staticmethod
+    def _execute_batch_insert(cursor, values):
+        query = """
+        INSERT INTO agrosync.log_exec 
+        (id_sensor, valor, dt_exec, dt_start_exec, dt_end_exec, qtd_data, ram_usage, process_usage, sensor_name)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+        """
+        cursor.executemany(query, values)
+
     def collect_data(self, num_samples, save_to_db=False):
         data = {
             'timestamp': [],
-            'moisture': []
+            'umidade': []
         }
 
         try:
             for _ in range(num_samples):
                 timestamp = datetime.now()
-                moisture = self.simulate_moisture()
+                umidade = self.simulate_moisture()
 
                 data['timestamp'].append(timestamp)
-                data['moisture'].append(moisture)
+                data['umidade'].append(umidade)
 
         except KeyboardInterrupt:
             print("\nColeta interrompida pelo usuário")
         finally:
             df = pd.DataFrame(data)
-
             if save_to_db:
-                self._save_to_mysql(df)
-
+                self._save_to_mysql(df, num_samples)
             return df
 
 
@@ -109,15 +121,15 @@ if __name__ == "__main__":
     }
     mysql_connector = MySQLConnector(**mysql_config)
 
-    sensor = SoilMoistureSimulator(
-        sensor_id=2,  # Exemplo: sensor_id diferente para umidade
+    sensor = DecagonEC5Simulator(
+        sensor_id=2,
         region_id=1,
         mysql_connector=mysql_connector
     )
 
     df = sensor.collect_data(
         num_samples=15,
-        save_to_db=False
+        save_to_db=True
     )
 
     print("\nEstatísticas dos dados coletados:")
