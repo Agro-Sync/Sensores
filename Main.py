@@ -7,8 +7,8 @@ import sys
 mysql_config = {
     'host': 'localhost',
     'database': 'agrosync',
-    'user': 'root',
-    'password': 'lukinhas2704'
+    'user': 'seu_usuario',
+    'password': 'sua_senha'
 }
 
 mysql_connector = MySQLConnector(**mysql_config)
