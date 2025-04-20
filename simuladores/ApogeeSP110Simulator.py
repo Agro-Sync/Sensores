@@ -2,9 +2,9 @@ import random
 import math
 from datetime import datetime
 import pandas as pd
-from psutil import cpu_percent
 from pymysql import Error
 import psutil
+import os
 
 class ApogeeSP110Simulator:
     """
@@ -60,6 +60,10 @@ class ApogeeSP110Simulator:
                     values = []
                     cpu_usage = psutil.cpu_percent()
 
+                    process = psutil.Process(os.getpid())
+                    mem_bytes = process.memory_info().rss
+                    mem_mb = mem_bytes / (1024 * 1024)
+
                     for _, row in data_frame.iterrows():
                         time_init = row['timestamp']
                         values.append((
@@ -69,7 +73,9 @@ class ApogeeSP110Simulator:
                             time_init,
                             datetime.now(),
                             num_sample,
+                            mem_mb,
                             cpu_usage,
+                            'ApogeeSP110',
                         ))
                     self._execute_batch_insert(cursor, values)
                     conn.commit()
@@ -82,8 +88,8 @@ class ApogeeSP110Simulator:
     def _execute_batch_insert(cursor, values):
         query = """
         INSERT INTO agrosync.log_exec 
-        (id_sensor, valor, dt_exec, dt_start_exec, dt_end_exec, qtd_data, process_usage)
-        VALUES (%s, %s, %s, %s, %s, %s, %s)
+        (id_sensor, valor, dt_exec, dt_start_exec, dt_end_exec, qtd_data, ram_usage, process_usage, sensor_name)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
         """
         cursor.executemany(query, values)
 
@@ -110,7 +116,7 @@ class ApogeeSP110Simulator:
             return df
 
 if __name__ == "__main__":
-    from conection.MysqlConection import MySQLConnector
+    from connection import MySQLConnector
 
     mysql_config = {
         'host': 'localhost',

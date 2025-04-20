@@ -1,9 +1,9 @@
+import os
 from datetime import datetime
 from pymysql import Error
 import pandas as pd
 import random
 import psutil
-import math
 
 class NPKSensorSimulator:
     """
@@ -49,11 +49,15 @@ class NPKSensorSimulator:
                     values = []
                     cpu_usage = psutil.cpu_percent()
 
+                    process = psutil.Process(os.getpid())
+                    mem_bytes = process.memory_info().rss
+                    mem_mb = mem_bytes / (1024 * 1024)
+
                     for _, row in data_frame.iterrows():
                         time_init = row['timestamp']
 
                         
-                        for valor in [row['nitrogenio'], row['fosforo'], row['potassio']]:
+                        for element, valor in zip(['Nitrogenio', 'Fosforo', 'Potassio'],[row['nitrogenio'], row['fosforo'], row['potassio']]):
                             values.append((
                                 self.sensor_id,
                                 valor,
@@ -61,7 +65,9 @@ class NPKSensorSimulator:
                                 time_init,
                                 datetime.now(),
                                 num_sample,
+                                mem_mb,
                                 cpu_usage,
+                                f'NPK {element}'
                             ))
                     self._execute_batch_insert(cursor, values)
                     conn.commit()
@@ -74,8 +80,8 @@ class NPKSensorSimulator:
     def _execute_batch_insert(cursor, values):
         query = """
         INSERT INTO agrosync.log_exec 
-        (id_sensor, valor, dt_exec, dt_start_exec, dt_end_exec, qtd_data, process_usage)
-        VALUES (%s, %s, %s, %s, %s, %s, %s)
+        (id_sensor, valor, dt_exec, dt_start_exec, dt_end_exec, qtd_data, ram_usage, process_usage, sensor_name)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
         """
         cursor.executemany(query, values)
 

@@ -1,1 +1,5 @@
 from .ApogeeSP110Simulator import ApogeeSP110Simulator
+from .DecagonEC5Simulator import DecagonEC5Simulator
+from .EzoPhSimulator import EzoPhSensor
+from .NpkSimulator import NPKSensorSimulator
+from .SensirionSHT31Simulator import SHT31Simulator

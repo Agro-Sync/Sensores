@@ -3,7 +3,7 @@ import numpy as np
 from datetime import datetime, timedelta
 import pandas as pd
 import matplotlib.pyplot as plt
-from scipy.interpolate import interp1d
+# from scipy.interpolate import interp1d
 
 class EzoPhSensor:
     def __init__(self, sensor_id=None, region_id=None, mysql_connector=None):
