@@ -3,7 +3,7 @@ from connection import MySQLConnector
 from simuladores import *
 import time
 import sys
-from conection.AzureConection import AzureIotConnection
+from conection import AzureIotConnection
 
 mysql_config = {
     'host': 'localhost',
