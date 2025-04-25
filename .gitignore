@@ -4,3 +4,4 @@ venv
 .idea
 .venv
 agrosync.egg-info/
+*.json

@@ -47,7 +47,7 @@ def processar_bloco(tamanho_bloco):
 
     for nome, sensor in sensores.items():
         inicio = time.time()
-        df = sensor.collect_data(num_samples=tamanho_bloco, save_to_db=True)
+        df = sensor.collect_data(num_samples=tamanho_bloco, save_to_db=False)
         fim = time.time()
 
         tempos[nome] = fim - inicio
@@ -152,8 +152,8 @@ def plot_por_cenario(tamanhos_por_cenario, tempos_sensor, mem_sensor):
 
 cenarios = [
     range(100, 600, 100),
-    range(1000, 6000, 100),
-    range(100, 600, 100),
+    # range(1000, 6000, 100),
+    range(10000, 60000, 1000),
 ]
 
 tempos_por_sensor = {nome: [] for nome in ["Apogee", "NPK", "Decagon", "SHT31"]}
@@ -182,6 +182,6 @@ for cenario in cenarios:
 
 
 # Plotagem dos gráficos
-plot_individual_por_sensor(tamanhos_por_cenario, tempos_por_sensor, memorias_por_sensor)
+# plot_individual_por_sensor(tamanhos_por_cenario, tempos_por_sensor, memorias_por_sensor)
 plot_desempenho_geral_por_cenario(tamanhos_por_cenario, tempos_por_sensor, memorias_por_sensor)
 plot_por_cenario(tamanhos_por_cenario, tempos_por_sensor, memorias_por_sensor)
