@@ -168,7 +168,7 @@ if __name__ == "__main__":
 
     df = sensor.collect_data(
         num_samples=15,
-        save_to_db=True
+        save_to_db=False
     )
 
     print("\nEstatísticas dos dados coletados:")

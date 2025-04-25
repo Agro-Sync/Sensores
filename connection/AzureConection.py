@@ -5,7 +5,7 @@ from azure.iot.device import IoTHubDeviceClient, Message
 class AzureIotConnection:
     def __init__(self, connection_string=None):
         if connection_string is None:
-            self.connection_string = "HostName=Grupo09.azure-devices.net;DeviceId=TesteConectsSensor;SharedAccessKey=W2T8NbTMa7mN+86/Had4O3DbTudxACoKYJLNFXphuns="
+            self.connection_string = 'HostName=Grupo09.azure-devices.net;DeviceId=TesteConectsSensor;SharedAccessKey=W2T8NbTMa7mN+86/Had4O3DbTudxACoKYJLNFXphuns='
         else:
             self.connection_string = connection_string
         self.device_client = None
