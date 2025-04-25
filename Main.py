@@ -1,5 +1,5 @@
 import matplotlib.pyplot as plt
-from connection import MySQLConnector
+from connection import MySQLConnector, AzureIotConnection
 from simuladores import *
 import time
 import sys
@@ -12,6 +12,8 @@ mysql_config = {
 }
 
 mysql_connector = MySQLConnector(**mysql_config)
+azure = AzureIotConnection()
+azure.connect()
 
 apogee = ApogeeSP110Simulator(
     sensor_id=1,
@@ -47,8 +49,12 @@ def processar_bloco(tamanho_bloco):
 
     for nome, sensor in sensores.items():
         inicio = time.time()
-        df = sensor.collect_data(num_samples=tamanho_bloco, save_to_db=True)
+        df = sensor.collect_data(num_samples=tamanho_bloco, save_to_db=False)
         fim = time.time()
+
+        for _, row in df.iterrows():
+            row_json = row.to_json()
+            azure.send_message(row_json)    
 
         tempos[nome] = fim - inicio
         memorias[nome] = sys.getsizeof(df) / (1024 * 1024)
@@ -152,8 +158,8 @@ def plot_por_cenario(tamanhos_por_cenario, tempos_sensor, mem_sensor):
 
 cenarios = [
     range(100, 600, 100),
-    range(1000, 6000, 100),
-    range(100, 600, 100),
+    # range(1000, 6000, 100),
+    range(10000, 60000, 1000),
 ]
 
 tempos_por_sensor = {nome: [] for nome in ["Apogee", "NPK", "Decagon", "SHT31"]}
@@ -182,6 +188,8 @@ for cenario in cenarios:
 
 
 # Plotagem dos gráficos
-plot_individual_por_sensor(tamanhos_por_cenario, tempos_por_sensor, memorias_por_sensor)
+# plot_individual_por_sensor(tamanhos_por_cenario, tempos_por_sensor, memorias_por_sensor)
 plot_desempenho_geral_por_cenario(tamanhos_por_cenario, tempos_por_sensor, memorias_por_sensor)
 plot_por_cenario(tamanhos_por_cenario, tempos_por_sensor, memorias_por_sensor)
+
+azure.disconnect()

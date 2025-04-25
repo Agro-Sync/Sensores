@@ -4,6 +4,7 @@ from pymysql import Error
 import pandas as pd
 import random
 import psutil
+import json
 
 class SHT31Simulator:
     """
@@ -84,6 +85,40 @@ class SHT31Simulator:
         """
         cursor.executemany(query, values)
 
+    def _save_to_json(self, data_frame, num_sample, file_path='dados_sensores.json'):
+        cpu_usage = psutil.cpu_percent()
+        process = psutil.Process(os.getpid())
+        mem_bytes = process.memory_info().rss
+        mem_mb = mem_bytes / (1024 * 1024)
+
+        json_data = []
+        for _, row in data_frame.iterrows():
+            time_init = row['timestamp']
+            json_data.append({
+                "id_sensor": self.sensor_id,
+                "valor": row['humidity'],
+                "dt_exec": time_init.strftime('%Y-%m-%d'),
+                "dt_start_exec": time_init.isoformat(),
+                "dt_end_exec": datetime.now().isoformat(),
+                "qtd_data": num_sample,
+                "ram_usage": round(mem_mb, 2),
+                "process_usage": cpu_usage,
+                "sensor_name": "SensirionSHT31"
+            })
+
+        file_exists = os.path.exists(file_path)
+
+        with open(file_path, 'a', encoding='utf-8') as f:
+            if not file_exists:
+                f.write('[')
+
+            for i, data in enumerate(json_data):
+                if i > 0:
+                    f.write(',')
+                json.dump(data, f, separators=(',',':'), ensure_ascii=False)
+
+            f.write(']')
+
     def collect_data(self, num_samples, save_to_db=False):
         data = {
             'timestamp': [],
@@ -102,6 +137,7 @@ class SHT31Simulator:
             print("\nColeta interrompida pelo usuário")
         finally:
             df = pd.DataFrame(data)
+            self._save_to_json(df, num_samples)
             if save_to_db:
                 self._save_to_mysql(df, num_samples)
             return df
