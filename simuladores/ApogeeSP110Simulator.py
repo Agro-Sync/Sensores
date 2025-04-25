@@ -125,7 +125,7 @@ class ApogeeSP110Simulator:
 
             for i, data in enumerate(json_data):
                 if i > 0:
-                    f.write(',\n')
+                    f.write(',')
                 json.dump(data, f, separators=(',',':'), ensure_ascii=False)
 
             f.write(']')

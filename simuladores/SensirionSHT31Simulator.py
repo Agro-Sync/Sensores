@@ -110,14 +110,14 @@ class SHT31Simulator:
 
         with open(file_path, 'a', encoding='utf-8') as f:
             if not file_exists:
-                f.write('[\n')
+                f.write('[')
 
             for i, data in enumerate(json_data):
                 if i > 0:
-                    f.write(',\n')
+                    f.write(',')
                 json.dump(data, f, separators=(',',':'), ensure_ascii=False)
 
-            f.write('\n]')
+            f.write(']')
 
     def collect_data(self, num_samples, save_to_db=False):
         data = {
