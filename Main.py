@@ -1,9 +1,8 @@
 import matplotlib.pyplot as plt
-from connection import MySQLConnector
+from connection import MySQLConnector, AzureIotConnection
 from simuladores import *
 import time
 import sys
-from conection import AzureIotConnection
 
 mysql_config = {
     'host': 'localhost',
