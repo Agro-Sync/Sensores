@@ -1,8 +1,6 @@
 import random
 import math
 from datetime import datetime
-from os.path import exists
-
 import pandas as pd
 from pymysql import Error
 import psutil

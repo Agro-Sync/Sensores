@@ -12,8 +12,8 @@ mysql_config = {
 }
 
 mysql_connector = MySQLConnector(**mysql_config)
-azure = AzureIotConnection()
-azure.connect()
+# azure = AzureIotConnection()
+# azure.connect()
 
 apogee = ApogeeSP110Simulator(
     sensor_id=1,
@@ -49,12 +49,12 @@ def processar_bloco(tamanho_bloco):
 
     for nome, sensor in sensores.items():
         inicio = time.time()
-        df = sensor.collect_data(num_samples=tamanho_bloco, save_to_db=False)
+        df = sensor.collect_data(num_samples=tamanho_bloco, save_to_db=False); # ; tem que ficar para não printar no jupyter
         fim = time.time()
 
-        for _, row in df.iterrows():
-            row_json = row.to_json()
-            azure.send_message(row_json)    
+        # for _, row in df.iterrows():
+        #     row_json = row.to_json()
+        #     azure.send_message(row_json)
 
         tempos[nome] = fim - inicio
         memorias[nome] = sys.getsizeof(df) / (1024 * 1024)
@@ -192,4 +192,4 @@ for cenario in cenarios:
 plot_desempenho_geral_por_cenario(tamanhos_por_cenario, tempos_por_sensor, memorias_por_sensor)
 plot_por_cenario(tamanhos_por_cenario, tempos_por_sensor, memorias_por_sensor)
 
-azure.disconnect()
+# azure.disconnect()
