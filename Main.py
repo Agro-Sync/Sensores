@@ -35,6 +35,18 @@ sensirion = SHT31Simulator(
     region_id=1,
     mysql_connector=mysql_connector
 )
+davis = Davis6410Simulator(
+    sensor_id=5,
+    region_id=1,
+    mysql_connector=mysql_connector
+)
+ezo = EzoPhSensor(
+    sensor_id=6,
+    region_id=1,
+    mysql_connector=mysql_connector
+)
+ezo.calibrate(2, 4.0)  # Ponto baixo
+ezo.calibrate(2, 7.0)  # Ponto médio
 
 def processar_bloco(tamanho_bloco):
     tempos = {}
@@ -44,7 +56,9 @@ def processar_bloco(tamanho_bloco):
         "Apogee": apogee,
         "NPK": npk,
         "Decagon": decagon,
-        "SHT31": sensirion
+        "SHT31": sensirion,
+        "Davis": davis,
+        "Ezo": ezo,
     }
 
     for nome, sensor in sensores.items():
@@ -161,9 +175,10 @@ cenarios = [
     # range(1000, 6000, 100),
     range(10000, 60000, 1000),
 ]
+sensores = ["Apogee", "NPK", "Decagon", "SHT31", "Davis", "Ezo"]
 
-tempos_por_sensor = {nome: [] for nome in ["Apogee", "NPK", "Decagon", "SHT31"]}
-memorias_por_sensor = {nome: [] for nome in ["Apogee", "NPK", "Decagon", "SHT31"]}
+tempos_por_sensor = {nome: [] for nome in sensores}
+memorias_por_sensor = {nome: [] for nome in sensores}
 tamanhos_por_cenario = []
 
 # Processa cada cenário
