@@ -12,8 +12,8 @@ mysql_config = {
 }
 
 mysql_connector = MySQLConnector(**mysql_config)
-azure = AzureIotConnection()
-azure.connect()
+# azure = AzureIotConnection()
+# azure.connect()
 
 apogee = ApogeeSP110Simulator(
     sensor_id=1,
@@ -35,6 +35,18 @@ sensirion = SHT31Simulator(
     region_id=1,
     mysql_connector=mysql_connector
 )
+davis = Davis6410Simulator(
+    sensor_id=5,
+    region_id=1,
+    mysql_connector=mysql_connector
+)
+ezo = EzoPhSensor(
+    sensor_id=6,
+    region_id=1,
+    mysql_connector=mysql_connector
+)
+ezo.calibrate(2, 4.0)  # Ponto baixo
+ezo.calibrate(2, 7.0)  # Ponto médio
 
 def processar_bloco(tamanho_bloco):
     tempos = {}
@@ -44,17 +56,19 @@ def processar_bloco(tamanho_bloco):
         "Apogee": apogee,
         "NPK": npk,
         "Decagon": decagon,
-        "SHT31": sensirion
+        "SHT31": sensirion,
+        "Davis": davis,
+        "Ezo": ezo,
     }
 
     for nome, sensor in sensores.items():
         inicio = time.time()
-        df = sensor.collect_data(num_samples=tamanho_bloco, save_to_db=False)
+        df = sensor.collect_data(num_samples=tamanho_bloco, save_to_db=False); # ; tem que ficar para não printar no jupyter
         fim = time.time()
 
-        for _, row in df.iterrows():
-            row_json = row.to_json()
-            azure.send_message(row_json)    
+        # for _, row in df.iterrows():
+        #     row_json = row.to_json()
+        #     azure.send_message(row_json)
 
         tempos[nome] = fim - inicio
         memorias[nome] = sys.getsizeof(df) / (1024 * 1024)
@@ -161,9 +175,10 @@ cenarios = [
     # range(1000, 6000, 100),
     range(10000, 60000, 1000),
 ]
+sensores = ["Apogee", "NPK", "Decagon", "SHT31", "Davis", "Ezo"]
 
-tempos_por_sensor = {nome: [] for nome in ["Apogee", "NPK", "Decagon", "SHT31"]}
-memorias_por_sensor = {nome: [] for nome in ["Apogee", "NPK", "Decagon", "SHT31"]}
+tempos_por_sensor = {nome: [] for nome in sensores}
+memorias_por_sensor = {nome: [] for nome in sensores}
 tamanhos_por_cenario = []
 
 # Processa cada cenário
@@ -192,4 +207,4 @@ for cenario in cenarios:
 plot_desempenho_geral_por_cenario(tamanhos_por_cenario, tempos_por_sensor, memorias_por_sensor)
 plot_por_cenario(tamanhos_por_cenario, tempos_por_sensor, memorias_por_sensor)
 
-azure.disconnect()
+# azure.disconnect()

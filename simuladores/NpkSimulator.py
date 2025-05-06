@@ -1,12 +1,8 @@
-import os
-from datetime import datetime
-from pymysql import Error
-import pandas as pd
 import random
-import psutil
-import json
+from simuladores.Sensor import Sensor
 
-class NPKSensorSimulator:
+
+class NPKSensorSimulator(Sensor):
     """
     Simulador de sensor de NPK com capacidade de:
     - Simulação realista de concentrações de N, P e K no solo
@@ -14,13 +10,14 @@ class NPKSensorSimulator:
     - Geração de DataFrame com os dados
     - Armazenamento no MySQL na tabela FatoValores (respeitando estrutura atual)
     """
-
     def __init__(self, sensor_id=None, region_id=None, mysql_connector=None):
-        self.sensor_id = sensor_id
-        self.region_id = region_id
-        self.mysql_connector = mysql_connector
+        super().__init__(sensor_id, region_id, mysql_connector)
         self.last_temp = 25
         self.last_rain = 5
+
+    @property
+    def sensor_type(self):
+        return 'NPK'
 
     def simulate_weather(self):
         temperatura = random.uniform(10, 40)
@@ -28,7 +25,7 @@ class NPKSensorSimulator:
         self.last_temp = round(temperatura, 1)
         self.last_rain = round(chuva, 1)
 
-    def simulate_npk(self):
+    def simulate_reading(self):
         self.simulate_weather()
         temperatura = self.last_temp
         chuva = self.last_rain
@@ -37,117 +34,18 @@ class NPKSensorSimulator:
         fosforo = max(0, random.gauss(12, 4) - (chuva * 0.1))
         potassio = max(0, random.gauss(120, 30) - (chuva * 0.2))
 
-        return round(nitrogenio, 1), round(fosforo, 1), round(potassio, 1)
-
-    def _save_to_mysql(self, data_frame, num_sample):
-        if not all([self.mysql_connector, self.sensor_id is not None, self.region_id is not None]):
-            print("Configuração MySQL incompleta - pulando salvamento no banco")
-            return False
-
-        try:
-            with self.mysql_connector.get_connection() as conn:
-                with conn.cursor() as cursor:
-                    values = []
-                    cpu_usage = psutil.cpu_percent()
-
-                    process = psutil.Process(os.getpid())
-                    mem_bytes = process.memory_info().rss
-                    mem_mb = mem_bytes / (1024 * 1024)
-
-                    for _, row in data_frame.iterrows():
-                        time_init = row['timestamp']
-
-                        
-                        for element, valor in zip(['Nitrogenio', 'Fosforo', 'Potassio'],[row['nitrogenio'], row['fosforo'], row['potassio']]):
-                            values.append((
-                                self.sensor_id,
-                                valor,
-                                time_init.strftime('%Y-%m-%d'),
-                                time_init,
-                                datetime.now(),
-                                num_sample,
-                                mem_mb,
-                                cpu_usage,
-                                f'NPK {element}'
-                            ))
-                    self._execute_batch_insert(cursor, values)
-                    conn.commit()
-
-        except Error as e:
-            print(f"Erro ao salvar no MySQL: {e}")
-            return False
-
-    @staticmethod
-    def _execute_batch_insert(cursor, values):
-        query = """
-        INSERT INTO agrosync.log_exec 
-        (id_sensor, valor, dt_exec, dt_start_exec, dt_end_exec, qtd_data, ram_usage, process_usage, sensor_name)
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
-        """
-        cursor.executemany(query, values)
-
-    def _save_to_json(self, data_frame, num_sample, file_path='dados_sensores.json'):
-        cpu_usage = psutil.cpu_percent()
-        process = psutil.Process(os.getpid())
-        mem_bytes = process.memory_info().rss
-        mem_mb = mem_bytes / (1024 * 1024)
-
-        json_data = []
-        for _, row in data_frame.iterrows():
-            time_init = row['timestamp']
-
-            for element, valor in zip(['Nitrogenio', 'Fosforo', 'Potassio'],[row['nitrogenio'], row['fosforo'], row['potassio']]):
-                json_data.append({
-                    "id_sensor": self.sensor_id,
-                    "valor": valor,
-                    "dt_exec": time_init.strftime('%Y-%m-%d'),
-                    "dt_start_exec": time_init.isoformat(),
-                    "dt_end_exec": datetime.now().isoformat(),
-                    "qtd_data": num_sample,
-                    "ram_usage": round(mem_mb, 2),
-                    "process_usage": cpu_usage,
-                    "sensor_name": f"NPK {element}"
-                })
-
-        file_exists = os.path.exists(file_path)
-
-        with open(file_path, 'a', encoding='utf-8') as f:
-            if not file_exists:
-                f.write('[')
-
-            for i, data in enumerate(json_data):
-                if i > 0:
-                    f.write(',')
-                json.dump(data, f, separators=(',',':'), ensure_ascii=False)
-
-            f.write(']')
-
-    def collect_data(self, num_samples, save_to_db=False):
-        data = {
-            'timestamp': [],
-            'nitrogenio': [],
-            'fosforo': [],
-            'potassio': []
+        return {
+            "nitrogenio": round(nitrogenio, 1),
+            "fosforo": round(fosforo, 1),
+            "potassio": round(potassio, 1)
         }
 
-        try:
-            for _ in range(num_samples):
-                timestamp = datetime.now()
-                n, p, k = self.simulate_npk()
-
-                data['timestamp'].append(timestamp)
-                data['nitrogenio'].append(n)
-                data['fosforo'].append(p)
-                data['potassio'].append(k)
-
-        except KeyboardInterrupt:
-            print("\nColeta interrompida pelo usuário")
-        finally:
-            df = pd.DataFrame(data)
-            self._save_to_json(df, num_samples)
-            if save_to_db:
-                self._save_to_mysql(df, num_samples)
-            return df
+    def _get_sensor_values(self, row):
+        return [
+            ('nitrogenio', row['nitrogenio']),
+            ('fosforo', row['fosforo']),
+            ('potassio', row['potassio'])
+        ]
 
 if __name__ == "__main__":
     from connection import MySQLConnector

@@ -6,26 +6,30 @@ import random
 import psutil
 import json
 
-class SHT31Simulator:
+from simuladores.Sensor import Sensor
+
+
+class SHT31Simulator(Sensor):
     """
     Simulador do sensor Sensirion SHT31 com capacidade de:
     - Simulação realista de humidade relativa do ar
     - Geração de DataFrame com os dados
     - Armazenamento no MySQL na tabela FatoValores
     """
-
     def __init__(self, sensor_id=None, region_id=None, mysql_connector=None):
+        super().__init__(sensor_id, region_id, mysql_connector)
         self.max_humidity = 100
         self.calibration_factor = 1.0
-        self.sensor_id = sensor_id
-        self.region_id = region_id
-        self.mysql_connector = mysql_connector
+
+    @property
+    def sensor_type(self):
+        return 'SHT31'
 
     def calibrate(self, calibration_factor=1.0):
         self.calibration_factor = calibration_factor
         print(f"Sensor calibrado com fator {calibration_factor:.2f}")
 
-    def simulate_humidity(self, base_value=None):
+    def simulate_reading(self, base_value=None):
         if base_value is None:
             now = datetime.now()
             hour = now.hour + now.minute / 60 + now.second / 3600
@@ -39,108 +43,12 @@ class SHT31Simulator:
         max_variation = base_value * 0.05 + 5
         measured_value = base_value + max(-max_variation, min(noise, max_variation))
         calibrated_value = measured_value * self.calibration_factor
-        return min(max(round(calibrated_value, 1), 0), self.max_humidity)
-
-    def _save_to_mysql(self, data_frame, num_sample):
-        if not all([self.mysql_connector, self.sensor_id is not None, self.region_id is not None]):
-            print("Configuração MySQL incompleta - pulando salvamento no banco")
-            return False
-
-        try:
-            with self.mysql_connector.get_connection() as conn:
-                with conn.cursor() as cursor:
-                    values = []
-                    cpu_usage = psutil.cpu_percent()
-
-                    process = psutil.Process(os.getpid())
-                    mem_bytes = process.memory_info().rss
-                    mem_mb = mem_bytes / (1024 * 1024)
-
-                    for _, row in data_frame.iterrows():
-                        time_init = row['timestamp']
-                        values.append((
-                            self.sensor_id,
-                            row['humidity'],
-                            time_init.strftime('%Y-%m-%d'),
-                            time_init,
-                            datetime.now(),
-                            num_sample,
-                            mem_mb,
-                            cpu_usage,
-                            'SensirionSHT31',
-                        ))
-                    self._execute_batch_insert(cursor, values)
-                    conn.commit()
-
-        except Error as e:
-            print(f"Erro ao salvar no MySQL: {e}")
-            return False
-
-    @staticmethod
-    def _execute_batch_insert(cursor, values):
-        query = """
-        INSERT INTO agrosync.log_exec 
-        (id_sensor, valor, dt_exec, dt_start_exec, dt_end_exec, qtd_data, ram_usage, process_usage, sensor_name)
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
-        """
-        cursor.executemany(query, values)
-
-    def _save_to_json(self, data_frame, num_sample, file_path='dados_sensores.json'):
-        cpu_usage = psutil.cpu_percent()
-        process = psutil.Process(os.getpid())
-        mem_bytes = process.memory_info().rss
-        mem_mb = mem_bytes / (1024 * 1024)
-
-        json_data = []
-        for _, row in data_frame.iterrows():
-            time_init = row['timestamp']
-            json_data.append({
-                "id_sensor": self.sensor_id,
-                "valor": row['humidity'],
-                "dt_exec": time_init.strftime('%Y-%m-%d'),
-                "dt_start_exec": time_init.isoformat(),
-                "dt_end_exec": datetime.now().isoformat(),
-                "qtd_data": num_sample,
-                "ram_usage": round(mem_mb, 2),
-                "process_usage": cpu_usage,
-                "sensor_name": "SensirionSHT31"
-            })
-
-        file_exists = os.path.exists(file_path)
-
-        with open(file_path, 'a', encoding='utf-8') as f:
-            if not file_exists:
-                f.write('[')
-
-            for i, data in enumerate(json_data):
-                if i > 0:
-                    f.write(',')
-                json.dump(data, f, separators=(',',':'), ensure_ascii=False)
-
-            f.write(']')
-
-    def collect_data(self, num_samples, save_to_db=False):
-        data = {
-            'timestamp': [],
-            'humidity': []
+        return {
+            "humidity": min(max(round(calibrated_value, 1), 0), self.max_humidity)
         }
 
-        try:
-            for _ in range(num_samples):
-                timestamp = datetime.now()
-                humidity = self.simulate_humidity()
-
-                data['timestamp'].append(timestamp)
-                data['humidity'].append(humidity)
-
-        except KeyboardInterrupt:
-            print("\nColeta interrompida pelo usuário")
-        finally:
-            df = pd.DataFrame(data)
-            self._save_to_json(df, num_samples)
-            if save_to_db:
-                self._save_to_mysql(df, num_samples)
-            return df
+    def _get_sensor_values(self, row):
+        return [("humidity", row["humidity"]),]
 
 if __name__ == "__main__":
     from connection import MySQLConnector
@@ -161,7 +69,7 @@ if __name__ == "__main__":
 
     df = sensor.collect_data(
         num_samples=15,
-        save_to_db=True
+        save_to_db=False
     )
 
     print("\nEstatísticas dos dados coletados:")

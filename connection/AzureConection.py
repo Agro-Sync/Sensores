@@ -1,5 +1,3 @@
-import time
-import random
 from azure.iot.device import IoTHubDeviceClient, Message
 
 class AzureIotConnection:
