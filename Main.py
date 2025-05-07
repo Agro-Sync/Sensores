@@ -2,7 +2,9 @@ import matplotlib.pyplot as plt
 from connection import MySQLConnector, AzureIotConnection
 from simuladores import *
 import time
+import json
 import sys
+import pandas as pd
 
 mysql_config = {
     'host': 'localhost',
@@ -12,8 +14,8 @@ mysql_config = {
 }
 
 mysql_connector = MySQLConnector(**mysql_config)
-# azure = AzureIotConnection()
-# azure.connect()
+azure = AzureIotConnection()
+azure.connect()
 
 apogee = ApogeeSP110Simulator(
     sensor_id=1,
@@ -63,12 +65,17 @@ def processar_bloco(tamanho_bloco):
 
     for nome, sensor in sensores.items():
         inicio = time.time()
-        df = sensor.collect_data(num_samples=tamanho_bloco, save_to_db=False); # ; tem que ficar para não printar no jupyter
+        df = sensor.collect_data(num_samples=tamanho_bloco, save_to_db=False)
         fim = time.time()
 
-        # for _, row in df.iterrows():
-        #     row_json = row.to_json()
-        #     azure.send_message(row_json)
+        for _, row in df.iterrows():
+            row_dict = row.to_dict()
+            row_dict["timestamp"] = int(pd.to_datetime(row_dict["timestamp"]).timestamp() * 1000)
+            row_dict["sensor_id"] = sensor.sensor_id
+            row_dict["region_id"] = sensor.region_id
+            row_json = json.dumps(row_dict)
+            print(row_json)
+            azure.send_message(row_json)
 
         tempos[nome] = fim - inicio
         memorias[nome] = sys.getsizeof(df) / (1024 * 1024)

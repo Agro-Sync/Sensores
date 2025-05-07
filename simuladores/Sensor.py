@@ -1,7 +1,6 @@
 from abc import ABC, abstractmethod
 from datetime import datetime
 from typing import final
-
 from pymysql import Error
 import os
 import json
