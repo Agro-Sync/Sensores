@@ -65,17 +65,12 @@ def processar_bloco(tamanho_bloco):
 
     for nome, sensor in sensores.items():
         inicio = time.time()
-        df = sensor.collect_data(num_samples=tamanho_bloco, save_to_db=False)
+        df = sensor.collect_data(num_samples=tamanho_bloco, save_to_db=False);
         fim = time.time()
 
-        for _, row in df.iterrows():
-            row_dict = row.to_dict()
-            row_dict["timestamp"] = int(pd.to_datetime(row_dict["timestamp"]).timestamp() * 1000)
-            row_dict["sensor_id"] = sensor.sensor_id
-            row_dict["region_id"] = sensor.region_id
-            row_json = json.dumps(row_dict)
-            print(row_json)
-            azure.send_message(row_json)
+        # json_list = df.to_dict(orient='records')
+        # for record in json_list:
+        #     azure.send_message(json.dumps(record));
 
         tempos[nome] = fim - inicio
         memorias[nome] = sys.getsizeof(df) / (1024 * 1024)
@@ -180,7 +175,7 @@ def plot_por_cenario(tamanhos_por_cenario, tempos_sensor, mem_sensor):
 cenarios = [
     range(100, 600, 100),
     # range(1000, 6000, 100),
-    range(10000, 60000, 1000),
+    # range(10000, 60000, 1000),
 ]
 sensores = ["Apogee", "NPK", "Decagon", "SHT31", "Davis", "Ezo"]
 
