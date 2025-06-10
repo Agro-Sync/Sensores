@@ -68,9 +68,9 @@ def processar_bloco(tamanho_bloco):
         df = sensor.collect_data(num_samples=tamanho_bloco, save_to_db=False);
         fim = time.time()
 
-        # json_list = df.to_dict(orient='records')
-        # for record in json_list:
-        #     azure.send_message(json.dumps(record));
+        json_list = df.to_dict(orient='records')
+        for record in json_list:
+            azure.send_message(json.dumps(record));
 
         tempos[nome] = fim - inicio
         memorias[nome] = sys.getsizeof(df) / (1024 * 1024)
@@ -172,41 +172,44 @@ def plot_por_cenario(tamanhos_por_cenario, tempos_sensor, mem_sensor):
         plt.show()
 
 
-cenarios = [
-    range(100, 600, 100),
-    # range(1000, 6000, 100),
-    # range(10000, 60000, 1000),
-]
-sensores = ["Apogee", "NPK", "Decagon", "SHT31", "Davis", "Ezo"]
+# cenarios = [
+#     range(100, 600, 100),
+#     # range(1000, 6000, 100),
+#     # range(10000, 60000, 1000),
+# ]
+# sensores = ["Apogee", "NPK", "Decagon", "SHT31", "Davis", "Ezo"]
+#
+# tempos_por_sensor = {nome: [] for nome in sensores}
+# memorias_por_sensor = {nome: [] for nome in sensores}
+# tamanhos_por_cenario = []
 
-tempos_por_sensor = {nome: [] for nome in sensores}
-memorias_por_sensor = {nome: [] for nome in sensores}
-tamanhos_por_cenario = []
+
+tempo, memoria = processar_bloco(20)
 
 # Processa cada cenário
-for cenario in cenarios:
-    # Temporários para este cenário
-    temp_sensor = {nome: [] for nome in tempos_por_sensor}
-    mem_sensor = {nome: [] for nome in memorias_por_sensor}
-    tamanhos = []
+# for cenario in cenarios:
+#     # Temporários para este cenário
+#     temp_sensor = {nome: [] for nome in tempos_por_sensor}
+#     mem_sensor = {nome: [] for nome in memorias_por_sensor}
+#     tamanhos = []
+#
+#     for tamanho in cenario:
+#         tempos, memorias = processar_bloco(tamanho)
+#         for nome in tempos:
+#             temp_sensor[nome].append(tempos[nome])
+#             mem_sensor[nome].append(memorias[nome])
+#         tamanhos.append(tamanho)
 
-    for tamanho in cenario:
-        tempos, memorias = processar_bloco(tamanho)
-        for nome in tempos:
-            temp_sensor[nome].append(tempos[nome])
-            mem_sensor[nome].append(memorias[nome])
-        tamanhos.append(tamanho)
-
-    tamanhos_por_cenario.append(tamanhos)
-
-    for nome in tempos_por_sensor:
-        tempos_por_sensor[nome].append(temp_sensor[nome])
-        memorias_por_sensor[nome].append(mem_sensor[nome])
+    # tamanhos_por_cenario.append(tamanhos)
+    #
+    # for nome in tempos_por_sensor:
+    #     tempos_por_sensor[nome].append(temp_sensor[nome])
+    #     memorias_por_sensor[nome].append(mem_sensor[nome])
 
 
 # Plotagem dos gráficos
 # plot_individual_por_sensor(tamanhos_por_cenario, tempos_por_sensor, memorias_por_sensor)
-plot_desempenho_geral_por_cenario(tamanhos_por_cenario, tempos_por_sensor, memorias_por_sensor)
-plot_por_cenario(tamanhos_por_cenario, tempos_por_sensor, memorias_por_sensor)
+# plot_desempenho_geral_por_cenario(tamanhos_por_cenario, tempos_por_sensor, memorias_por_sensor)
+# plot_por_cenario(tamanhos_por_cenario, tempos_por_sensor, memorias_por_sensor)
 
 # azure.disconnect()

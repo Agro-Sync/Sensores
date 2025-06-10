@@ -57,7 +57,7 @@ class Sensor(ABC):
 
     @final
     def _save_to_json(self, data_frame, file_path='dados_sensores.json'):
-        json_data = data_frame.to_dict(orient='records')  # ← conversão correta
+        json_data = data_frame.to_dict(orient='records')  # lista de dicts
         self._save_in_file(file_path, json_data)
 
     @abstractmethod
@@ -67,20 +67,11 @@ class Sensor(ABC):
 
     @staticmethod
     @final
-    def _save_in_file(file_path, json_data):
-        existing_data = []
-
-        if os.path.exists(file_path):
-            with open(file_path, 'r', encoding='utf-8') as f:
-                try:
-                    existing_data = json.load(f)
-                except json.JSONDecodeError:
-                    pass
-
-        existing_data.extend(json_data)
-
-        with open(file_path, 'w', encoding='utf-8') as f:
-            json.dump(existing_data, f, ensure_ascii=False, indent=2)
+    def _save_in_file(file_path, json_data: list):
+        with open(file_path, 'a', encoding='utf-8') as f:
+            for entry in json_data:
+                json_line = json.dumps(entry, ensure_ascii=False)
+                f.write(json_line + '\n')
 
     @final
     def collect_data(self, num_samples, save_to_db=False):
