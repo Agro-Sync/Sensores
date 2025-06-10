@@ -24,4 +24,4 @@ class AzureIotConnection:
             message.content_encoding = "utf-8"
             message.content_type = "application/json"
             self.device_client.send_message(message)
-            print(f"Mensagem enviada: {data}")
+            # print(f"Mensagem enviada: {data}")
