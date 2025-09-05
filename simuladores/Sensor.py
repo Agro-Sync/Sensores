@@ -117,7 +117,7 @@ class Sensor(ABC):
             f.write(']')
 
     @final
-    def collect_data(self, num_samples, save_to_db=False):
+    def collect_data(self, num_samples, file_name='dados_sensores.json', save_to_db=False):
         data = {'timestamp': []}
 
         try:
@@ -135,7 +135,7 @@ class Sensor(ABC):
             print("\nColeta interrompida pelo usuário")
         finally:
             df = pd.DataFrame(data)
-            self._save_to_json(df, num_samples)
+            self._save_to_json(df, num_samples, file_name)
             if save_to_db:
                 self._save_to_mysql(df, num_samples)
             return df

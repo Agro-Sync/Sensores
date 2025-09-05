@@ -63,7 +63,7 @@ def processar_bloco(tamanho_bloco):
 
     for nome, sensor in sensores.items():
         inicio = time.time()
-        df = sensor.collect_data(num_samples=tamanho_bloco, save_to_db=False); # ; tem que ficar para não printar no jupyter
+        df = sensor.collect_data(num_samples=tamanho_bloco, file_name=f'{name}_data.json',save_to_db=False); # ; tem que ficar para não printar no jupyter
         fim = time.time()
 
         # for _, row in df.iterrows():
