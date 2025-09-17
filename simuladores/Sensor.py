@@ -93,7 +93,8 @@ class Sensor(ABC):
                     "sensor_name": f"{self.sensor_type} {element_name}" if element_name else self.sensor_type
                 })
 
-        self._save_in_file(file_path, json_data)
+        # self._save_in_file(file_path, json_data)
+        return json_data
 
     @abstractmethod
     def _get_sensor_values(self, row):
@@ -106,15 +107,13 @@ class Sensor(ABC):
         file_exists = os.path.exists(file_path)
 
         with open(file_path, 'a', encoding='utf-8') as f:
-            if not file_exists:
-                f.write('[')
-
+            if file_exists:
+                f.write(",")
             for i, data in enumerate(json_data):
                 if i > 0:
                     f.write(',\n')
                 json.dump(data, f, separators=(',',':'), ensure_ascii=False)
 
-            f.write(']')
 
     @final
     def collect_data(self, num_samples, file_name='dados_sensores.json', save_to_db=False):
@@ -135,10 +134,10 @@ class Sensor(ABC):
             print("\nColeta interrompida pelo usuário")
         finally:
             df = pd.DataFrame(data)
-            self._save_to_json(df, num_samples, file_name)
+            payload = self._save_to_json(df, num_samples, file_name)
             if save_to_db:
                 self._save_to_mysql(df, num_samples)
-            return df
+            return payload
 
     @abstractmethod
     def simulate_reading(self):
